@@ -125,6 +125,21 @@ h2 {
   background: linear-gradient(135deg, #60a5fa, #22c55e);
 }
 
+.primary-button.loading {
+  cursor: progress;
+  opacity: 0.86;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .secondary-button {
   color: #dbeafe;
   border-color: rgba(147, 197, 253, 0.26);
@@ -303,7 +318,8 @@ h2 {
   gap: 10px;
 }
 
-.category-list div {
+.category-list div,
+.merchant-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -315,6 +331,55 @@ h2 {
 
 .category-list span {
   color: #b9c7d9;
+}
+
+.merchant-list {
+  display: grid;
+  gap: 10px;
+}
+
+.merchant-row {
+  min-height: 68px;
+}
+
+.merchant-rank {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  color: #bfdbfe;
+  font-weight: 900;
+  background: rgba(96, 165, 250, 0.14);
+}
+
+.merchant-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.merchant-main strong,
+.merchant-main span {
+  display: block;
+}
+
+.merchant-main strong {
+  overflow: hidden;
+  color: #f8fafc;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merchant-main span {
+  margin-top: 4px;
+  color: #9fb0c7;
+  font-size: 0.88rem;
+}
+
+.merchant-value {
+  white-space: nowrap;
+  color: #e5edf7;
 }
 
 .empty-state {
@@ -446,6 +511,14 @@ th {
   .table-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .merchant-row {
+    align-items: flex-start;
+  }
+
+  .merchant-value {
+    font-size: 0.95rem;
   }
 
   h1 {
