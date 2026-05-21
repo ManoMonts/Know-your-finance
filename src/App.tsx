@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -211,7 +211,7 @@ export default function App() {
   );
 }
 
-function MetricCard({ icon, label, value, highlight }: { icon: React.ReactNode; label: string; value: string; highlight?: boolean }) {
+function MetricCard({ icon, label, value, highlight }: { icon: ReactNode; label: string; value: string; highlight?: boolean }) {
   return (
     <div className={`metric-card ${highlight ? 'positive' : ''}`}>
       <div className="metric-icon">{icon}</div>
