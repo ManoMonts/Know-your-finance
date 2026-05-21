@@ -40,6 +40,23 @@ export type MonthlyFlow = {
   gastos: number;
 };
 
+export type ImportAuditStatus = 'matched' | 'warning' | 'unknown';
+
+export type ImportAudit = {
+  bankName: string;
+  period: string;
+  declaredIncome: number | null;
+  declaredExpense: number | null;
+  declaredFinalBalance: number | null;
+  detectedIncome: number;
+  detectedExpense: number;
+  detectedBalance: number;
+  detectedTransactions: number;
+  incomeDifference: number | null;
+  expenseDifference: number | null;
+  status: ImportAuditStatus;
+};
+
 export type InsightTone = 'positive' | 'warning' | 'neutral';
 
 export type FinancialInsight = {
