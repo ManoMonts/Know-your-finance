@@ -1,4 +1,4 @@
-import type { CategoryTotal, FinancialInsight, MonthlyFlow, Summary, Transaction } from '../types/finance';
+import type { CategoryTotal, FinancialInsight, MerchantTotal, MonthlyFlow, Summary, Transaction } from '../types/finance';
 
 export function getSummary(transactions: Transaction[]): Summary {
   return transactions.reduce<Summary>(
@@ -23,6 +23,41 @@ export function getExpensesByCategory(transactions: Transaction[]): CategoryTota
     });
 
   return Array.from(totals, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+}
+
+export function getTopMerchants(transactions: Transaction[], limit = 8): MerchantTotal[] {
+  const totals = new Map<string, MerchantTotal>();
+
+  transactions
+    .filter((transaction) => transaction.type === 'expense')
+    .forEach((transaction) => {
+      const merchant = cleanMerchantName(transaction.description);
+      const current = totals.get(merchant) ?? {
+        name: merchant,
+        category: transaction.category,
+        value: 0,
+        count: 0,
+      };
+
+      current.value += transaction.amount;
+      current.count += 1;
+      totals.set(merchant, current);
+    });
+
+  return Array.from(totals.values())
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+}
+
+function cleanMerchantName(description: string) {
+  return description
+    .replace(/^Compra no débito via NuPay\s+/i, '')
+    .replace(/^Compra no débito\s+/i, '')
+    .replace(/^Transferência enviada pelo Pix\s+/i, '')
+    .replace(/^Pagamento de\s+/i, '')
+    .replace(/\s+-\s+.*$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 export function getMonthlyFlow(transactions: Transaction[]): MonthlyFlow[] {
@@ -60,6 +95,7 @@ export function getFinancialInsights(transactions: Transaction[]): FinancialInsi
   const insights: FinancialInsight[] = [];
   const expenseRatio = summary.income > 0 ? summary.expense / summary.income : 0;
   const mainCategory = categories[0];
+  const topMerchant = getTopMerchants(transactions, 1)[0];
   const biggestExpense = expenses.reduce<Transaction | null>((biggest, transaction) => {
     if (!biggest) return transaction;
     return transaction.amount > biggest.amount ? transaction : biggest;
@@ -103,7 +139,14 @@ export function getFinancialInsights(transactions: Transaction[]): FinancialInsi
     });
   }
 
-  if (biggestExpense) {
+  if (topMerchant) {
+    insights.push({
+      title: 'Onde mais saiu dinheiro',
+      description: `${topMerchant.name} apareceu ${topMerchant.count} vez(es) no extrato analisado.`,
+      tone: topMerchant.value > summary.expense * 0.3 ? 'warning' : 'neutral',
+      value: formatCurrency(topMerchant.value),
+    });
+  } else if (biggestExpense) {
     insights.push({
       title: 'Maior lançamento de gasto',
       description: biggestExpense.description,
