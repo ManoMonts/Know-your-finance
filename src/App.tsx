@@ -7,6 +7,7 @@ import {
   CalendarDays,
   FileText,
   Lightbulb,
+  Loader2,
   Search,
   ShieldCheck,
   Sparkles,
@@ -27,6 +28,7 @@ import {
 } from 'recharts';
 import { getExpensesByCategory, getFinancialInsights, getMonthlyFlow, getSummary, formatCurrency } from './lib/financeAnalytics';
 import { sampleText } from './lib/financeRules';
+import { extractTextFromPdf } from './lib/pdfExtractor';
 import { normalizeText, parseStatement } from './lib/statementParser';
 import type { FinancialInsight } from './types/finance';
 
@@ -35,6 +37,7 @@ const chartColors = ['#60a5fa', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa', '#14
 export default function App() {
   const [rawText, setRawText] = useState(sampleText);
   const [query, setQuery] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
 
   const transactions = useMemo(() => parseStatement(rawText), [rawText]);
   const summary = useMemo(() => getSummary(transactions), [transactions]);
@@ -52,11 +55,16 @@ export default function App() {
   async function handleFile(file?: File) {
     if (!file) return;
 
+    setIsImporting(true);
+
     try {
-      const content = await file.text();
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const content = isPdf ? await extractTextFromPdf(file) : await file.text();
       setRawText(content);
     } catch {
-      window.alert('Não foi possível ler o arquivo. Tente exportar o extrato em CSV ou TXT.');
+      window.alert('Não foi possível ler o arquivo. Tente enviar um PDF, CSV ou TXT exportado pelo banco.');
+    } finally {
+      setIsImporting(false);
     }
   }
 
@@ -67,12 +75,12 @@ export default function App() {
           <span className="eyebrow"><Sparkles size={16} /> Know Your Finance</span>
           <h1>Transforme seu extrato bancário em uma análise financeira clara.</h1>
           <p>
-            Cole ou envie um extrato em CSV/texto. O sistema separa entradas e saídas, classifica os gastos e mostra onde seu dinheiro está indo.
+            Cole ou envie um extrato em PDF, CSV ou texto. O sistema separa entradas e saídas, classifica os gastos e mostra onde seu dinheiro está indo.
           </p>
           <div className="hero-actions">
-            <label className="primary-button">
-              <Upload size={18} /> Importar extrato
-              <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
+            <label className={`primary-button ${isImporting ? 'loading' : ''}`}>
+              {isImporting ? <Loader2 size={18} className="spin" /> : <Upload size={18} />} {isImporting ? 'Lendo extrato...' : 'Importar extrato'}
+              <input type="file" accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
             </label>
             <a className="secondary-button" href="#analise">Ver análise</a>
           </div>
@@ -113,7 +121,7 @@ export default function App() {
               <h2>Extrato bancário</h2>
             </div>
           </div>
-          <p className="muted">Formato recomendado: data; descrição; valor. Valores negativos são gastos.</p>
+          <p className="muted">Aceita PDF do banco, CSV, TXT ou texto colado. O parser ignora cabeçalhos, rodapés e totais diários quando possível.</p>
           <textarea
             aria-label="Cole o extrato bancário aqui"
             value={rawText}
