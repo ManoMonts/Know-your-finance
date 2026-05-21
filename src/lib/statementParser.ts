@@ -100,16 +100,13 @@ function shouldIgnoreLine(line: string) {
     'felipe monteiro',
     'cpf',
     'agencia',
-    'conta',
+    'conta:',
     'valores em r$',
     'saldo final do periodo',
     'saldo final do período',
     'saldo inicial',
     'rendimento liquido',
     'rendimento líquido',
-    'total de entradas',
-    'total de saidas',
-    'total de saídas',
     'movimentacoes',
     'movimentações',
     'tem alguma duvida',
@@ -127,17 +124,83 @@ function shouldIgnoreLine(line: string) {
   ].some((term) => normalized.includes(normalizeText(term)));
 }
 
-function getAmountFromLastLine(lines: string[], startIndex: number) {
-  for (let index = startIndex + 1; index <= Math.min(startIndex + 5, lines.length - 1); index += 1) {
+function parseModeFromLine(line: string): TransactionType | null {
+  if (/Total de entradas/i.test(line)) return 'income';
+  if (/Total de saídas|Total de saidas/i.test(line)) return 'expense';
+  return null;
+}
+
+function isDateLine(line: string) {
+  return /^\d{2}\s+[A-ZÇ]{3}\s+\d{4}\b/i.test(line.trim());
+}
+
+function isTransactionStarter(line: string) {
+  return /^(Compra no débito|Transferência enviada pelo Pix|Transferência recebida pelo Pix|Transferência Recebida|Reembolso recebido pelo Pix|Pagamento de fatura|Pagamento de|Pix enviado|Pix recebido)/i.test(line.trim());
+}
+
+function isContinuationNoise(line: string) {
+  return /^(Agência|Conta:|\d{1,20}-?\d?$|[A-Z0-9 .-]+\(\d{4}\)$)/i.test(line.trim());
+}
+
+function getAmountFromFollowingLines(lines: string[], startIndex: number) {
+  for (let index = startIndex + 1; index <= Math.min(startIndex + 8, lines.length - 1); index += 1) {
     const line = lines[index].trim();
+
     if (/^\d{1,3}(?:\.\d{3})*,\d{2}$|^\d+[,.]\d{2}$/.test(line)) {
       return { amountRaw: line, endIndex: index };
     }
 
-    if (/^\d{2}\s+[A-ZÇ]{3}\s+\d{4}/i.test(line) || /^Total de /i.test(line)) break;
+    if (isDateLine(line) || /^Total de /i.test(line) || isTransactionStarter(line)) break;
   }
 
   return null;
+}
+
+function buildMultiLineDescription(lines: string[], startIndex: number) {
+  const parts = [lines[startIndex].trim()];
+  let endIndex = startIndex;
+  let amountRaw: string | null = null;
+
+  const inlineMatch = parts[0].match(/^(.*?)(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[,.]\d{2})$/);
+  if (inlineMatch) {
+    return {
+      description: inlineMatch[1].replace(/\s+/g, ' ').trim(),
+      amountRaw: inlineMatch[2],
+      endIndex,
+    };
+  }
+
+  for (let index = startIndex + 1; index <= Math.min(startIndex + 8, lines.length - 1); index += 1) {
+    const line = lines[index].trim();
+
+    if (/^\d{1,3}(?:\.\d{3})*,\d{2}$|^\d+[,.]\d{2}$/.test(line)) {
+      amountRaw = line;
+      endIndex = index;
+      break;
+    }
+
+    if (isDateLine(line) || /^Total de /i.test(line) || isTransactionStarter(line)) break;
+
+    if (!shouldIgnoreLine(line) && !isContinuationNoise(line)) {
+      parts.push(line);
+    }
+
+    endIndex = index;
+  }
+
+  if (!amountRaw) {
+    const delayed = getAmountFromFollowingLines(lines, startIndex);
+    if (delayed) {
+      amountRaw = delayed.amountRaw;
+      endIndex = delayed.endIndex;
+    }
+  }
+
+  return {
+    description: parts.join(' ').replace(/\s+/g, ' ').trim(),
+    amountRaw,
+    endIndex,
+  };
 }
 
 function parseNubankLines(lines: string[]) {
@@ -146,41 +209,31 @@ function parseNubankLines(lines: string[]) {
   let currentMode: TransactionType | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index].trim();
+    let line = lines[index].trim();
 
     const dateMatch = line.match(/^(\d{2}\s+[A-ZÇ]{3}\s+\d{4})\b/i);
     if (dateMatch) {
       currentDate = normalizeDate(dateMatch[1]);
-      const remaining = line.replace(dateMatch[1], '').trim();
-      if (!remaining) continue;
+      line = line.replace(dateMatch[1], '').trim();
+      const modeFromDateLine = parseModeFromLine(line);
+      if (modeFromDateLine) currentMode = modeFromDateLine;
+      if (!line || modeFromDateLine) continue;
     }
 
-    if (/^Total de entradas/i.test(line)) {
-      currentMode = 'income';
+    const mode = parseModeFromLine(line);
+    if (mode) {
+      currentMode = mode;
       continue;
     }
 
-    if (/^Total de saídas|^Total de saidas/i.test(line)) {
-      currentMode = 'expense';
-      continue;
-    }
+    if (!currentDate || !currentMode || shouldIgnoreLine(line) || !isTransactionStarter(line)) continue;
 
-    if (!currentDate || !currentMode || shouldIgnoreLine(line)) continue;
+    const parsed = buildMultiLineDescription(lines, index);
+    if (!parsed.amountRaw || !parsed.description) continue;
 
-    const inlineMatch = line.match(/^(.*?)(\d{1,3}(?:\.\d{3})*,\d{2}|\d+[,.]\d{2})$/);
-    const delayedAmount = inlineMatch ? null : getAmountFromLastLine(lines, index);
-    const amountRaw = inlineMatch?.[2] ?? delayedAmount?.amountRaw;
-
-    if (!amountRaw) continue;
-
-    const description = (inlineMatch?.[1] ?? line)
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    if (!description || /^Agência|^Conta:/i.test(description)) continue;
-
-    const signedAmount = parseAmount(`${currentMode === 'expense' ? '-' : '+'}${amountRaw}`);
+    const signedAmount = parseAmount(`${currentMode === 'expense' ? '-' : '+'}${parsed.amountRaw}`);
     const type: TransactionType = signedAmount >= 0 ? 'income' : 'expense';
+    const description = parsed.description;
 
     transactions.push({
       id: `nubank-${transactions.length}-${currentDate}-${description}-${signedAmount}`,
@@ -189,10 +242,10 @@ function parseNubankLines(lines: string[]) {
       amount: Math.abs(signedAmount),
       type,
       category: categorize(description, type),
-      source: line,
+      source: lines.slice(index, parsed.endIndex + 1).join(' '),
     });
 
-    if (delayedAmount) index = delayedAmount.endIndex;
+    index = parsed.endIndex;
   }
 
   return transactions;
@@ -262,8 +315,12 @@ export function parseStatement(text: string): Transaction[] {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const nubankTransactions = parseNubankLines(lines);
-  if (nubankTransactions.length > 0) return nubankTransactions;
+  const looksLikeNubank = lines.some((line) => /Total de entradas|Total de saídas|Total de saidas/i.test(line))
+    && lines.some((line) => /Compra no débito|Transferência .*Pix|Pagamento de fatura/i.test(line));
+
+  if (looksLikeNubank) {
+    return parseNubankLines(lines);
+  }
 
   return lines
     .filter((line) => !shouldIgnoreLine(line))
