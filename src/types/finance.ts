@@ -32,3 +32,12 @@ export type MonthlyFlow = {
   entradas: number;
   gastos: number;
 };
+
+export type InsightTone = 'positive' | 'warning' | 'neutral';
+
+export type FinancialInsight = {
+  title: string;
+  description: string;
+  tone: InsightTone;
+  value?: string;
+};
