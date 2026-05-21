@@ -11,10 +11,12 @@ import {
   Info,
   Lightbulb,
   Loader2,
+  LockKeyhole,
   Search,
   ShieldCheck,
   Sparkles,
   Store,
+  TrendingUp,
   Upload,
   Wallet,
 } from 'lucide-react';
@@ -43,6 +45,7 @@ type TypeFilter = 'all' | TransactionType;
 type QuickFilter = 'biggest-expenses' | 'income' | 'pix' | 'food' | 'transport' | 'health';
 
 export default function App() {
+  const [hasStarted, setHasStarted] = useState(false);
   const [rawText, setRawText] = useState(sampleText);
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -82,6 +85,7 @@ export default function App() {
       const content = isPdf ? await extractTextFromPdf(file) : await file.text();
       setRawText(content);
       clearFilters();
+      setHasStarted(true);
     } catch {
       window.alert('Não foi possível ler o arquivo. Tente enviar um PDF, CSV ou TXT exportado pelo banco.');
     } finally {
@@ -129,6 +133,80 @@ export default function App() {
     setTypeFilter('all');
     setCategoryFilter('all');
     setSortOption('date-desc');
+  }
+
+  if (!hasStarted) {
+    return (
+      <main className="landing-shell">
+        <nav className="landing-nav">
+          <div className="landing-brand">
+            <span><Wallet size={20} /></span>
+            <strong>Know Your Finance</strong>
+          </div>
+          <button type="button" className="login-preview-button">
+            <LockKeyhole size={16} /> Entrar / criar conta em breve
+          </button>
+        </nav>
+
+        <section className="landing-hero">
+          <div className="landing-copy">
+            <span className="landing-eyebrow"><Sparkles size={16} /> Análise financeira sem cara de banco chato</span>
+            <h1>Entenda seu dinheiro a partir do seu extrato bancário.</h1>
+            <p>
+              Importe um PDF, CSV ou TXT do banco e veja entradas, gastos, categorias, maiores despesas e insights automáticos em poucos segundos.
+            </p>
+            <div className="landing-actions">
+              <button type="button" className="landing-primary" onClick={() => setHasStarted(true)}>
+                Começar análise
+              </button>
+              <label className={`landing-secondary ${isImporting ? 'loading' : ''}`}>
+                {isImporting ? <Loader2 size={18} className="spin" /> : <Upload size={18} />} Importar extrato agora
+                <input type="file" accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
+              </label>
+            </div>
+          </div>
+
+          <div className="landing-preview-card">
+            <div className="preview-topline">
+              <span>Prévia do relatório</span>
+              <strong>Demo visual</strong>
+            </div>
+            <div className="preview-balance">
+              <span>Saldo analisado</span>
+              <strong>R$ 0,00</strong>
+            </div>
+            <div className="preview-bars">
+              <div><span></span></div>
+              <div><span></span></div>
+              <div><span></span></div>
+            </div>
+            <div className="preview-list">
+              <div><span>Alimentação</span><strong>categoria</strong></div>
+              <div><span>Pix/transferências</span><strong>filtro</strong></div>
+              <div><span>Maiores gastos</span><strong>ranking</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section className="landing-features">
+          <article>
+            <BarChart3 size={22} />
+            <strong>Relatórios claros</strong>
+            <p>Entradas, saídas, categorias, gráficos e ranking dos maiores gastos.</p>
+          </article>
+          <article>
+            <ShieldCheck size={22} />
+            <strong>Privacidade primeiro</strong>
+            <p>Nesta fase, a leitura acontece no navegador. Depois entraremos com login e banco seguro.</p>
+          </article>
+          <article>
+            <TrendingUp size={22} />
+            <strong>Insights automáticos</strong>
+            <p>O app destaca onde o dinheiro mais saiu e se o mês fechou positivo ou negativo.</p>
+          </article>
+        </section>
+      </main>
+    );
   }
 
   return (
