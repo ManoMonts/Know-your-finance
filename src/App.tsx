@@ -40,6 +40,7 @@ import type { FinancialInsight, ImportAudit, Transaction, TransactionType } from
 const chartColors = ['#60a5fa', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa', '#14b8a6', '#f97316', '#ec4899', '#84cc16'];
 type SortOption = 'date-desc' | 'amount-desc' | 'amount-asc' | 'expenses-desc' | 'income-desc';
 type TypeFilter = 'all' | TransactionType;
+type QuickFilter = 'biggest-expenses' | 'income' | 'pix' | 'food' | 'transport' | 'health';
 
 export default function App() {
   const [rawText, setRawText] = useState(sampleText);
@@ -88,7 +89,7 @@ export default function App() {
     }
   }
 
-  function applyQuickFilter(filter: 'biggest-expenses' | 'income' | 'pix' | 'food' | 'transport' | 'health') {
+  function applyQuickFilter(filter: QuickFilter) {
     setQuery('');
     setCategoryFilter('all');
 
@@ -111,6 +112,16 @@ export default function App() {
     if (filter === 'food') setCategoryFilter('Alimentação');
     if (filter === 'transport') setCategoryFilter('Transporte');
     if (filter === 'health') setCategoryFilter('Farmácia e saúde');
+  }
+
+  function isQuickFilterActive(filter: QuickFilter) {
+    if (filter === 'biggest-expenses') return typeFilter === 'expense' && sortOption === 'expenses-desc' && categoryFilter === 'all' && query === '';
+    if (filter === 'income') return typeFilter === 'income' && sortOption === 'income-desc' && categoryFilter === 'all' && query === '';
+    if (filter === 'pix') return query === 'pix';
+    if (filter === 'food') return categoryFilter === 'Alimentação';
+    if (filter === 'transport') return categoryFilter === 'Transporte';
+    if (filter === 'health') return categoryFilter === 'Farmácia e saúde';
+    return false;
   }
 
   function clearFilters() {
@@ -270,7 +281,7 @@ export default function App() {
         )}
       </section>
 
-      <section className="panel wide-panel">
+      <section className="panel wide-panel transactions-panel">
         <div className="panel-header table-header">
           <div>
             <span className="section-label"><FileText size={16} /> Lançamentos</span>
@@ -278,44 +289,57 @@ export default function App() {
           </div>
           <div className="table-count">{filteredTransactions.length} resultado(s)</div>
         </div>
-        <div className="quick-filters" aria-label="Filtros rápidos">
-          <button type="button" onClick={() => applyQuickFilter('biggest-expenses')}>Maiores gastos</button>
-          <button type="button" onClick={() => applyQuickFilter('income')}>Só entradas</button>
-          <button type="button" onClick={() => applyQuickFilter('pix')}>Pix/transferências</button>
-          <button type="button" onClick={() => applyQuickFilter('food')}>Alimentação</button>
-          <button type="button" onClick={() => applyQuickFilter('transport')}>Transporte</button>
-          <button type="button" onClick={() => applyQuickFilter('health')}>Farmácia</button>
-          <button type="button" onClick={clearFilters}>Limpar</button>
-        </div>
-        <div className="filter-bar">
-          <div className="search-box">
-            <Search size={17} />
-            <input
-              aria-label="Buscar transações"
-              placeholder="Buscar por descrição, categoria ou data"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+        <div className="transactions-toolbar">
+          <div className="quick-filters" aria-label="Filtros rápidos">
+            <button type="button" className={isQuickFilterActive('biggest-expenses') ? 'active' : ''} onClick={() => applyQuickFilter('biggest-expenses')}>Maiores gastos</button>
+            <button type="button" className={isQuickFilterActive('income') ? 'active' : ''} onClick={() => applyQuickFilter('income')}>Só entradas</button>
+            <button type="button" className={isQuickFilterActive('pix') ? 'active' : ''} onClick={() => applyQuickFilter('pix')}>Pix/transferências</button>
+            <button type="button" className={isQuickFilterActive('food') ? 'active' : ''} onClick={() => applyQuickFilter('food')}>Alimentação</button>
+            <button type="button" className={isQuickFilterActive('transport') ? 'active' : ''} onClick={() => applyQuickFilter('transport')}>Transporte</button>
+            <button type="button" className={isQuickFilterActive('health') ? 'active' : ''} onClick={() => applyQuickFilter('health')}>Farmácia</button>
           </div>
-          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}>
-            <option value="all">Todos os tipos</option>
-            <option value="expense">Somente gastos</option>
-            <option value="income">Somente entradas</option>
-          </select>
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
-            <option value="all">Todas as categorias</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-          <select value={sortOption} onChange={(event) => setSortOption(event.target.value as SortOption)}>
-            <option value="date-desc">Mais recentes primeiro</option>
-            <option value="expenses-desc">Maiores gastos primeiro</option>
-            <option value="income-desc">Maiores entradas primeiro</option>
-            <option value="amount-desc">Maior valor primeiro</option>
-            <option value="amount-asc">Menor valor primeiro</option>
-          </select>
-          <button type="button" className="clear-button" onClick={clearFilters}>Limpar filtros</button>
+          <div className="filter-grid">
+            <div className="filter-field search-field">
+              <span className="filter-label">Buscar</span>
+              <div className="search-box">
+                <Search size={17} />
+                <input
+                  aria-label="Buscar transações"
+                  placeholder="Descrição, categoria ou data"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="filter-field">
+              <span className="filter-label">Tipo</span>
+              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}>
+                <option value="all">Todos os tipos</option>
+                <option value="expense">Somente gastos</option>
+                <option value="income">Somente entradas</option>
+              </select>
+            </div>
+            <div className="filter-field">
+              <span className="filter-label">Categoria</span>
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                <option value="all">Todas as categorias</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
+            <div className="filter-field">
+              <span className="filter-label">Ordenação</span>
+              <select value={sortOption} onChange={(event) => setSortOption(event.target.value as SortOption)}>
+                <option value="date-desc">Mais recentes primeiro</option>
+                <option value="expenses-desc">Maiores gastos primeiro</option>
+                <option value="income-desc">Maiores entradas primeiro</option>
+                <option value="amount-desc">Maior valor primeiro</option>
+                <option value="amount-asc">Menor valor primeiro</option>
+              </select>
+            </div>
+            <button type="button" className="clear-button" onClick={clearFilters}>Limpar</button>
+          </div>
         </div>
         <div className="table-wrap">
           <table>
