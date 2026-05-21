@@ -1,20 +1,111 @@
 import type { CategoryRule } from '../types/finance';
 
 export const expenseRules: CategoryRule[] = [
-  { category: 'Mercado', keywords: ['mercado', 'supermercado', 'atacadao', 'atacadão', 'assai', 'assaí', 'condor', 'muffato', 'carrefour'] },
-  { category: 'Alimentação', keywords: ['ifood', 'restaurante', 'lanchonete', 'pizza', 'burger', 'padaria', 'cafe', 'café'] },
-  { category: 'Transporte', keywords: ['uber', '99', 'posto', 'combustivel', 'combustível', 'gasolina', 'alcool', 'álcool', 'etanol', 'estacionamento', 'pedagio', 'pedágio'] },
-  { category: 'Moradia', keywords: ['aluguel', 'condominio', 'condomínio', 'energia', 'copel', 'agua', 'água', 'sanepar', 'internet', 'vivo', 'claro', 'tim'] },
-  { category: 'Saúde', keywords: ['farmacia', 'farmácia', 'drogaria', 'consulta', 'medico', 'médico', 'laboratorio', 'laboratório', 'exame'] },
-  { category: 'Lazer', keywords: ['cinema', 'netflix', 'spotify', 'prime', 'show', 'ingresso', 'bar'] },
-  { category: 'Educação', keywords: ['faculdade', 'curso', 'livro', 'universidade', 'uel'] },
-  { category: 'Compras', keywords: ['amazon', 'mercado livre', 'magazine', 'shein', 'shopee', 'loja'] },
-  { category: 'Taxas bancárias', keywords: ['tarifa', 'juros', 'iof', 'anuidade', 'cesta'] },
+  {
+    category: 'Alimentação',
+    keywords: [
+      'ifood',
+      'nupay ifood',
+      'restaurante',
+      'lanchonete',
+      'lanche',
+      'pizza',
+      'burger',
+      'padaria',
+      'cafe',
+      'café',
+      'cantina',
+      'jasmin cantina',
+      'estacao gourmet',
+      'estação gourmet',
+      'gente boa lanchonete',
+      'restaurante hig',
+      'tashiro',
+      'espets',
+      "espetu's",
+      'pastel',
+      'japi foods',
+      'cascais sorvetes',
+      'rei do lanche',
+      'reidolanche',
+      'padariamarana',
+    ],
+  },
+  {
+    category: 'Transporte',
+    keywords: [
+      'uber',
+      '99',
+      'easyjet',
+      'jetshr',
+      'posto',
+      'auto posto',
+      'petrolandia',
+      'combustivel',
+      'combustível',
+      'gasolina',
+      'alcool',
+      'álcool',
+      'etanol',
+      'estacionamento',
+      'pedagio',
+      'pedágio',
+      'aeroporto',
+    ],
+  },
+  {
+    category: 'Farmácia e saúde',
+    keywords: ['farmacia', 'farmácia', 'drogaria', 'consulta', 'medico', 'médico', 'laboratorio', 'laboratório', 'exame'],
+  },
+  {
+    category: 'Conveniência e pequenos gastos',
+    keywords: ['conveniencia', 'conveniência', 'berlim conveniencia', 'angelim loja de conv', 'reidaconvenie', 'jequitiba comercio', 'daiso'],
+  },
+  {
+    category: 'Mercado',
+    keywords: ['mercado', 'supermercado', 'atacadao', 'atacadão', 'assai', 'assaí', 'condor', 'muffato', 'carrefour'],
+  },
+  {
+    category: 'Moradia e contas',
+    keywords: ['aluguel', 'condominio', 'condomínio', 'energia', 'copel', 'agua', 'água', 'sanepar', 'internet', 'vivo', 'claro', 'tim'],
+  },
+  {
+    category: 'Fatura e cartão',
+    keywords: ['pagamento de fatura', 'fatura', 'cartao', 'cartão'],
+  },
+  {
+    category: 'Impostos e taxas',
+    keywords: ['governo do parana', 'governo do paraná', 'secretaria de estado da fazenda', 'ipva', 'detran', 'imposto', 'taxa'],
+  },
+  {
+    category: 'Transferências para pessoas',
+    keywords: ['transferencia enviada pelo pix', 'transferência enviada pelo pix', 'pix enviado'],
+  },
+  {
+    category: 'Compras pessoais',
+    keywords: ['amazon', 'mercado livre', 'magazine', 'shein', 'shopee', 'loja', 'lashebrows', 'mp *leilamohr', 'mp *percilia'],
+  },
+  {
+    category: 'Assinaturas e digital',
+    keywords: ['netflix', 'spotify', 'prime', 'bytedance', 'tiktok', 'google', 'apple.com', 'icloud'],
+  },
+  {
+    category: 'Lazer',
+    keywords: ['cinema', 'show', 'ingresso', 'bar'],
+  },
+  {
+    category: 'Educação',
+    keywords: ['faculdade', 'curso', 'livro', 'universidade', 'uel'],
+  },
+  {
+    category: 'Taxas bancárias',
+    keywords: ['tarifa', 'juros', 'iof', 'anuidade', 'cesta'],
+  },
 ];
 
 export const incomeRules: CategoryRule[] = [
-  { category: 'Salário', keywords: ['salario', 'salário', 'pagamento empresa', 'folha'] },
-  { category: 'Pix recebido', keywords: ['pix recebido', 'receb pix', 'transferencia recebida', 'transferência recebida'] },
+  { category: 'Salário e trabalho', keywords: ['salario', 'salário', 'pagamento empresa', 'folha', 'mib negocios imobiliarios', 'mib negócios imobiliários'] },
+  { category: 'Transferências recebidas', keywords: ['pix recebido', 'receb pix', 'transferencia recebida', 'transferência recebida', 'transferência recebida pelo pix'] },
   { category: 'Reembolso', keywords: ['reembolso', 'estorno', 'devolucao', 'devolução'] },
   { category: 'Rendimentos', keywords: ['rendimento', 'juros capital', 'investimento'] },
 ];
