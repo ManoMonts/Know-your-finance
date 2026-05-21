@@ -27,6 +27,13 @@ export type CategoryTotal = {
   value: number;
 };
 
+export type MerchantTotal = {
+  name: string;
+  category: string;
+  value: number;
+  count: number;
+};
+
 export type MonthlyFlow = {
   month: string;
   entradas: number;
