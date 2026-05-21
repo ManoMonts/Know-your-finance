@@ -11,6 +11,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Store,
   Upload,
   Wallet,
 } from 'lucide-react';
@@ -26,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getExpensesByCategory, getFinancialInsights, getMonthlyFlow, getSummary, formatCurrency } from './lib/financeAnalytics';
+import { getExpensesByCategory, getFinancialInsights, getMonthlyFlow, getSummary, getTopMerchants, formatCurrency } from './lib/financeAnalytics';
 import { sampleText } from './lib/financeRules';
 import { extractTextFromPdf } from './lib/pdfExtractor';
 import { normalizeText, parseStatement } from './lib/statementParser';
@@ -42,6 +43,7 @@ export default function App() {
   const transactions = useMemo(() => parseStatement(rawText), [rawText]);
   const summary = useMemo(() => getSummary(transactions), [transactions]);
   const expensesByCategory = useMemo(() => getExpensesByCategory(transactions), [transactions]);
+  const topMerchants = useMemo(() => getTopMerchants(transactions), [transactions]);
   const monthlyFlow = useMemo(() => getMonthlyFlow(transactions), [transactions]);
   const insights = useMemo(() => getFinancialInsights(transactions), [transactions]);
 
@@ -165,6 +167,31 @@ export default function App() {
             <EmptyState text="Nenhum gasto identificado no extrato colado." />
           )}
         </div>
+      </section>
+
+      <section className="panel wide-panel merchant-panel">
+        <div className="panel-header">
+          <div>
+            <span className="section-label"><Store size={16} /> Maiores destinos</span>
+            <h2>Onde o dinheiro mais saiu</h2>
+          </div>
+        </div>
+        {topMerchants.length > 0 ? (
+          <div className="merchant-list">
+            {topMerchants.map((merchant, index) => (
+              <div className="merchant-row" key={`${merchant.name}-${merchant.category}`}>
+                <span className="merchant-rank">{index + 1}</span>
+                <div className="merchant-main">
+                  <strong>{merchant.name}</strong>
+                  <span>{merchant.category} • {merchant.count} lançamento(s)</span>
+                </div>
+                <strong className="merchant-value">{formatCurrency(merchant.value)}</strong>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState text="Importe um extrato para ver seus maiores destinos de gasto." />
+        )}
       </section>
 
       <section className="panel wide-panel">
