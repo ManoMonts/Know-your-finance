@@ -1,22 +1,45 @@
 import { getSummary } from './financeAnalytics';
-import { parseAmount } from './statementParser';
+import { normalizeText, parseAmount } from './statementParser';
 import type { ImportAudit, Transaction } from '../types/finance';
 
-function findAmountAfterLabel(text: string, label: string) {
+function isMoneyLine(line: string) {
+  return /^[+-]?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}$|^[+-]?\s?\d+[,.]\d{2}$/.test(line.trim());
+}
+
+function findInlineAmountAfterLabel(text: string, label: string) {
   const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = new RegExp(`${escapedLabel}\\s*([+-]?\\s?R?\\$?\\s?\\d{1,3}(?:\\.\\d{3})*,\\d{2}|[+-]?\\s?\\d+[,.]\\d{2})`, 'i');
   const match = text.match(pattern);
   return match?.[1] ? Math.abs(parseAmount(match[1])) : null;
 }
 
+function findAmountInNubankSummary(lines: string[], label: string) {
+  const normalizedLabel = normalizeText(label);
+  const summaryStart = lines.findIndex((line) => normalizeText(line).includes('saldo inicial'));
+  const summaryEnd = lines.findIndex((line) => normalizeText(line).includes('movimentacoes') || normalizeText(line).includes('movimentações'));
+  const safeStart = summaryStart >= 0 ? summaryStart : 0;
+  const safeEnd = summaryEnd > safeStart ? summaryEnd : Math.min(lines.length, safeStart + 20);
+  const summaryLines = lines.slice(safeStart, safeEnd);
+  const labelIndex = summaryLines.findIndex((line) => normalizeText(line).includes(normalizedLabel));
+
+  if (labelIndex < 0) return null;
+
+  const followingMoney = summaryLines.slice(labelIndex + 1).find((line) => isMoneyLine(line));
+  return followingMoney ? Math.abs(parseAmount(followingMoney)) : null;
+}
+
+function findAmountAfterLabel(rawText: string, lines: string[], label: string) {
+  return findInlineAmountAfterLabel(rawText, label) ?? findAmountInNubankSummary(lines, label);
+}
+
 function detectBankName(text: string) {
-  const normalized = text.toLowerCase();
+  const normalized = normalizeText(text);
   if (normalized.includes('nu pagamentos') || normalized.includes('nubank')) return 'Nubank';
-  if (normalized.includes('itaú') || normalized.includes('itau')) return 'Itaú';
+  if (normalized.includes('itau')) return 'Itaú';
   if (normalized.includes('bradesco')) return 'Bradesco';
   if (normalized.includes('santander')) return 'Santander';
   if (normalized.includes('banco do brasil')) return 'Banco do Brasil';
-  if (normalized.includes('caixa economica') || normalized.includes('caixa econômica')) return 'Caixa';
+  if (normalized.includes('caixa economica')) return 'Caixa';
   return 'Banco não identificado';
 }
 
@@ -37,10 +60,14 @@ function isClose(value: number | null, tolerance = 0.05) {
 }
 
 export function auditImport(rawText: string, transactions: Transaction[]): ImportAudit {
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   const summary = getSummary(transactions);
-  const declaredIncome = findAmountAfterLabel(rawText, 'Total de entradas');
-  const declaredExpense = findAmountAfterLabel(rawText, 'Total de saídas') ?? findAmountAfterLabel(rawText, 'Total de saidas');
-  const declaredFinalBalance = findAmountAfterLabel(rawText, 'Saldo final do período') ?? findAmountAfterLabel(rawText, 'Saldo final do periodo');
+  const declaredIncome = findAmountAfterLabel(rawText, lines, 'Total de entradas');
+  const declaredExpense = findAmountAfterLabel(rawText, lines, 'Total de saídas') ?? findAmountAfterLabel(rawText, lines, 'Total de saidas');
+  const declaredFinalBalance = findAmountAfterLabel(rawText, lines, 'Saldo final do período') ?? findAmountAfterLabel(rawText, lines, 'Saldo final do periodo');
   const incomeDifference = moneyDifference(declaredIncome, summary.income);
   const expenseDifference = moneyDifference(declaredExpense, summary.expense);
   const hasDeclaredTotals = declaredIncome !== null || declaredExpense !== null;
