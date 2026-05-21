@@ -1,11 +1,14 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowDownCircle,
   ArrowUpCircle,
   Banknote,
   BarChart3,
   CalendarDays,
+  CheckCircle2,
   FileText,
+  Info,
   Lightbulb,
   Loader2,
   Search,
@@ -29,9 +32,10 @@ import {
 } from 'recharts';
 import { getExpensesByCategory, getFinancialInsights, getMonthlyFlow, getSummary, getTopMerchants, formatCurrency } from './lib/financeAnalytics';
 import { sampleText } from './lib/financeRules';
+import { auditImport } from './lib/importAudit';
 import { extractTextFromPdf } from './lib/pdfExtractor';
 import { normalizeText, parseStatement } from './lib/statementParser';
-import type { FinancialInsight } from './types/finance';
+import type { FinancialInsight, ImportAudit } from './types/finance';
 
 const chartColors = ['#60a5fa', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa', '#14b8a6', '#f97316', '#ec4899', '#84cc16'];
 
@@ -42,6 +46,7 @@ export default function App() {
 
   const transactions = useMemo(() => parseStatement(rawText), [rawText]);
   const summary = useMemo(() => getSummary(transactions), [transactions]);
+  const importAudit = useMemo(() => auditImport(rawText, transactions), [rawText, transactions]);
   const expensesByCategory = useMemo(() => getExpensesByCategory(transactions), [transactions]);
   const topMerchants = useMemo(() => getTopMerchants(transactions), [transactions]);
   const monthlyFlow = useMemo(() => getMonthlyFlow(transactions), [transactions]);
@@ -100,6 +105,8 @@ export default function App() {
         <MetricCard icon={<Wallet />} label="Saldo analisado" value={formatCurrency(summary.balance)} highlight={summary.balance >= 0} />
         <MetricCard icon={<FileText />} label="Lançamentos" value={String(summary.count)} />
       </section>
+
+      <ImportAuditPanel audit={importAudit} />
 
       <section className="panel wide-panel insight-panel">
         <div className="panel-header">
@@ -260,6 +267,53 @@ export default function App() {
         </div>
       </section>
     </main>
+  );
+}
+
+function ImportAuditPanel({ audit }: { audit: ImportAudit }) {
+  const icon = audit.status === 'matched' ? <CheckCircle2 size={18} /> : audit.status === 'warning' ? <AlertTriangle size={18} /> : <Info size={18} />;
+  const title = audit.status === 'matched' ? 'Importação conferida' : audit.status === 'warning' ? 'Importação precisa de conferência' : 'Resumo oficial não identificado';
+  const description = audit.status === 'matched'
+    ? 'Os totais lidos no extrato batem com as transações detectadas.'
+    : audit.status === 'warning'
+      ? 'O sistema encontrou diferença entre o resumo oficial e as transações lidas. Revise o extrato antes de confiar no relatório.'
+      : 'Não encontrei totais oficiais no texto importado. A análise foi feita somente pelas transações detectadas.';
+
+  return (
+    <section className={`panel wide-panel audit-panel ${audit.status}`}>
+      <div className="audit-header">
+        <div className="audit-title">
+          {icon}
+          <div>
+            <span>{title}</span>
+            <p>{description}</p>
+          </div>
+        </div>
+        <div className="audit-bank">
+          <strong>{audit.bankName}</strong>
+          <span>{audit.period}</span>
+        </div>
+      </div>
+      <div className="audit-grid">
+        <AuditItem label="Entradas oficiais" value={audit.declaredIncome === null ? 'Não identificado' : formatCurrency(audit.declaredIncome)} />
+        <AuditItem label="Entradas lidas" value={formatCurrency(audit.detectedIncome)} difference={audit.incomeDifference} />
+        <AuditItem label="Saídas oficiais" value={audit.declaredExpense === null ? 'Não identificado' : formatCurrency(audit.declaredExpense)} />
+        <AuditItem label="Saídas lidas" value={formatCurrency(audit.detectedExpense)} difference={audit.expenseDifference} />
+        <AuditItem label="Saldo final oficial" value={audit.declaredFinalBalance === null ? 'Não identificado' : formatCurrency(audit.declaredFinalBalance)} />
+        <AuditItem label="Transações lidas" value={String(audit.detectedTransactions)} />
+      </div>
+    </section>
+  );
+}
+
+function AuditItem({ label, value, difference }: { label: string; value: string; difference?: number | null }) {
+  const hasDifference = typeof difference === 'number' && Math.abs(difference) > 0.05;
+  return (
+    <div className="audit-item">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {typeof difference === 'number' ? <small className={hasDifference ? 'audit-diff warning' : 'audit-diff'}>{hasDifference ? `Diferença: ${formatCurrency(difference)}` : 'Sem diferença relevante'}</small> : null}
+    </div>
   );
 }
 
