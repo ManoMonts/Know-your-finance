@@ -80,15 +80,37 @@ export default function App() {
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       const content = isPdf ? await extractTextFromPdf(file) : await file.text();
       setRawText(content);
-      setQuery('');
-      setTypeFilter('all');
-      setCategoryFilter('all');
-      setSortOption('date-desc');
+      clearFilters();
     } catch {
       window.alert('Não foi possível ler o arquivo. Tente enviar um PDF, CSV ou TXT exportado pelo banco.');
     } finally {
       setIsImporting(false);
     }
+  }
+
+  function applyQuickFilter(filter: 'biggest-expenses' | 'income' | 'pix' | 'food' | 'transport' | 'health') {
+    setQuery('');
+    setCategoryFilter('all');
+
+    if (filter === 'biggest-expenses') {
+      setTypeFilter('expense');
+      setSortOption('expenses-desc');
+      return;
+    }
+
+    if (filter === 'income') {
+      setTypeFilter('income');
+      setSortOption('income-desc');
+      return;
+    }
+
+    setTypeFilter('all');
+    setSortOption(filter === 'pix' ? 'amount-desc' : 'expenses-desc');
+
+    if (filter === 'pix') setQuery('pix');
+    if (filter === 'food') setCategoryFilter('Alimentação');
+    if (filter === 'transport') setCategoryFilter('Transporte');
+    if (filter === 'health') setCategoryFilter('Farmácia e saúde');
   }
 
   function clearFilters() {
@@ -255,6 +277,15 @@ export default function App() {
             <h2>Transações categorizadas</h2>
           </div>
           <div className="table-count">{filteredTransactions.length} resultado(s)</div>
+        </div>
+        <div className="quick-filters" aria-label="Filtros rápidos">
+          <button type="button" onClick={() => applyQuickFilter('biggest-expenses')}>Maiores gastos</button>
+          <button type="button" onClick={() => applyQuickFilter('income')}>Só entradas</button>
+          <button type="button" onClick={() => applyQuickFilter('pix')}>Pix/transferências</button>
+          <button type="button" onClick={() => applyQuickFilter('food')}>Alimentação</button>
+          <button type="button" onClick={() => applyQuickFilter('transport')}>Transporte</button>
+          <button type="button" onClick={() => applyQuickFilter('health')}>Farmácia</button>
+          <button type="button" onClick={clearFilters}>Limpar</button>
         </div>
         <div className="filter-bar">
           <div className="search-box">
