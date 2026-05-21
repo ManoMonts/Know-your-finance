@@ -6,6 +6,7 @@ import {
   BarChart3,
   CalendarDays,
   FileText,
+  Lightbulb,
   Search,
   ShieldCheck,
   Sparkles,
@@ -24,9 +25,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getExpensesByCategory, getMonthlyFlow, getSummary, formatCurrency } from './lib/financeAnalytics';
+import { getExpensesByCategory, getFinancialInsights, getMonthlyFlow, getSummary, formatCurrency } from './lib/financeAnalytics';
 import { sampleText } from './lib/financeRules';
 import { normalizeText, parseStatement } from './lib/statementParser';
+import type { FinancialInsight } from './types/finance';
 
 const chartColors = ['#60a5fa', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa', '#14b8a6', '#f97316', '#ec4899', '#84cc16'];
 
@@ -38,6 +40,7 @@ export default function App() {
   const summary = useMemo(() => getSummary(transactions), [transactions]);
   const expensesByCategory = useMemo(() => getExpensesByCategory(transactions), [transactions]);
   const monthlyFlow = useMemo(() => getMonthlyFlow(transactions), [transactions]);
+  const insights = useMemo(() => getFinancialInsights(transactions), [transactions]);
 
   const filteredTransactions = useMemo(() => {
     const search = normalizeText(query);
@@ -86,6 +89,20 @@ export default function App() {
         <MetricCard icon={<ArrowDownCircle />} label="Gastos" value={formatCurrency(summary.expense)} />
         <MetricCard icon={<Wallet />} label="Saldo analisado" value={formatCurrency(summary.balance)} highlight={summary.balance >= 0} />
         <MetricCard icon={<FileText />} label="Lançamentos" value={String(summary.count)} />
+      </section>
+
+      <section className="panel wide-panel insight-panel">
+        <div className="panel-header">
+          <div>
+            <span className="section-label"><Lightbulb size={16} /> Leitura inteligente</span>
+            <h2>O que o extrato está dizendo</h2>
+          </div>
+        </div>
+        <div className="insight-grid">
+          {insights.map((insight) => (
+            <InsightCard key={`${insight.title}-${insight.value ?? ''}`} insight={insight} />
+          ))}
+        </div>
       </section>
 
       <section className="content-grid">
@@ -218,6 +235,18 @@ function MetricCard({ icon, label, value, highlight }: { icon: ReactNode; label:
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function InsightCard({ insight }: { insight: FinancialInsight }) {
+  return (
+    <article className={`insight-card ${insight.tone}`}>
+      <div>
+        <span>{insight.title}</span>
+        <p>{insight.description}</p>
+      </div>
+      {insight.value ? <strong>{insight.value}</strong> : null}
+    </article>
   );
 }
 
