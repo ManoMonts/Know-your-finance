@@ -12,6 +12,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -248,6 +252,18 @@ h2 {
   color: #b9c7d9;
 }
 
+.empty-state {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  padding: 24px;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 22px;
+  color: #9fb0c7;
+  text-align: center;
+  background: rgba(2, 6, 23, 0.24);
+}
+
 .wide-panel {
   margin-bottom: 18px;
 }
@@ -270,6 +286,11 @@ h2 {
   color: #e5edf7;
   background: transparent;
   outline: none;
+}
+
+.search-box input::placeholder,
+.import-panel textarea::placeholder {
+  color: #64748b;
 }
 
 .table-wrap {
