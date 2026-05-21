@@ -4,6 +4,7 @@ import App from './App';
 import './styles.css';
 import './audit.css';
 import './filters.css';
+import './landing.css';
 
 const rootElement = document.getElementById('root');
 
