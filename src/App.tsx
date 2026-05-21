@@ -35,13 +35,18 @@ import { sampleText } from './lib/financeRules';
 import { auditImport } from './lib/importAudit';
 import { extractTextFromPdf } from './lib/pdfExtractor';
 import { normalizeText, parseStatement } from './lib/statementParser';
-import type { FinancialInsight, ImportAudit } from './types/finance';
+import type { FinancialInsight, ImportAudit, Transaction, TransactionType } from './types/finance';
 
 const chartColors = ['#60a5fa', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa', '#14b8a6', '#f97316', '#ec4899', '#84cc16'];
+type SortOption = 'date-desc' | 'amount-desc' | 'amount-asc' | 'expenses-desc' | 'income-desc';
+type TypeFilter = 'all' | TransactionType;
 
 export default function App() {
   const [rawText, setRawText] = useState(sampleText);
   const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sortOption, setSortOption] = useState<SortOption>('date-desc');
   const [isImporting, setIsImporting] = useState(false);
 
   const transactions = useMemo(() => parseStatement(rawText), [rawText]);
@@ -51,13 +56,20 @@ export default function App() {
   const topMerchants = useMemo(() => getTopMerchants(transactions), [transactions]);
   const monthlyFlow = useMemo(() => getMonthlyFlow(transactions), [transactions]);
   const insights = useMemo(() => getFinancialInsights(transactions), [transactions]);
+  const categories = useMemo(() => Array.from(new Set(transactions.map((item) => item.category))).sort(), [transactions]);
 
   const filteredTransactions = useMemo(() => {
     const search = normalizeText(query);
-    if (!search) return transactions;
 
-    return transactions.filter((item) => normalizeText(`${item.description} ${item.category} ${item.date}`).includes(search));
-  }, [query, transactions]);
+    return transactions
+      .filter((item) => {
+        const matchesSearch = !search || normalizeText(`${item.description} ${item.category} ${item.date}`).includes(search);
+        const matchesType = typeFilter === 'all' || item.type === typeFilter;
+        const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+        return matchesSearch && matchesType && matchesCategory;
+      })
+      .sort((a, b) => sortTransactions(a, b, sortOption));
+  }, [categoryFilter, query, sortOption, transactions, typeFilter]);
 
   async function handleFile(file?: File) {
     if (!file) return;
@@ -68,11 +80,22 @@ export default function App() {
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       const content = isPdf ? await extractTextFromPdf(file) : await file.text();
       setRawText(content);
+      setQuery('');
+      setTypeFilter('all');
+      setCategoryFilter('all');
+      setSortOption('date-desc');
     } catch {
       window.alert('Não foi possível ler o arquivo. Tente enviar um PDF, CSV ou TXT exportado pelo banco.');
     } finally {
       setIsImporting(false);
     }
+  }
+
+  function clearFilters() {
+    setQuery('');
+    setTypeFilter('all');
+    setCategoryFilter('all');
+    setSortOption('date-desc');
   }
 
   return (
@@ -133,6 +156,7 @@ export default function App() {
           <p className="muted">Aceita PDF do banco, CSV, TXT ou texto colado. O parser ignora cabeçalhos, rodapés e totais diários quando possível.</p>
           <textarea
             aria-label="Cole o extrato bancário aqui"
+            placeholder="Importe um PDF, CSV ou TXT para começar a análise."
             value={rawText}
             onChange={(event) => setRawText(event.target.value)}
             spellCheck={false}
@@ -230,6 +254,9 @@ export default function App() {
             <span className="section-label"><FileText size={16} /> Lançamentos</span>
             <h2>Transações categorizadas</h2>
           </div>
+          <div className="table-count">{filteredTransactions.length} resultado(s)</div>
+        </div>
+        <div className="filter-bar">
           <div className="search-box">
             <Search size={17} />
             <input
@@ -239,6 +266,25 @@ export default function App() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}>
+            <option value="all">Todos os tipos</option>
+            <option value="expense">Somente gastos</option>
+            <option value="income">Somente entradas</option>
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="all">Todas as categorias</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+          <select value={sortOption} onChange={(event) => setSortOption(event.target.value as SortOption)}>
+            <option value="date-desc">Mais recentes primeiro</option>
+            <option value="expenses-desc">Maiores gastos primeiro</option>
+            <option value="income-desc">Maiores entradas primeiro</option>
+            <option value="amount-desc">Maior valor primeiro</option>
+            <option value="amount-asc">Menor valor primeiro</option>
+          </select>
+          <button type="button" className="clear-button" onClick={clearFilters}>Limpar filtros</button>
         </div>
         <div className="table-wrap">
           <table>
@@ -268,6 +314,26 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+function sortTransactions(a: Transaction, b: Transaction, sortOption: SortOption) {
+  if (sortOption === 'amount-desc') return b.amount - a.amount;
+  if (sortOption === 'amount-asc') return a.amount - b.amount;
+  if (sortOption === 'expenses-desc') {
+    if (a.type !== b.type) return a.type === 'expense' ? -1 : 1;
+    return b.amount - a.amount;
+  }
+  if (sortOption === 'income-desc') {
+    if (a.type !== b.type) return a.type === 'income' ? -1 : 1;
+    return b.amount - a.amount;
+  }
+  return parseDateValue(b.date) - parseDateValue(a.date);
+}
+
+function parseDateValue(date: string) {
+  const match = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return 0;
+  return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1])).getTime();
 }
 
 function ImportAuditPanel({ audit }: { audit: ImportAudit }) {
