@@ -2,6 +2,21 @@ import { getSummary } from './financeAnalytics';
 import { normalizeText, parseAmount } from './statementParser';
 import type { ImportAudit, Transaction } from '../types/finance';
 
+type SummaryLabelKey = 'initialBalance' | 'netYield' | 'income' | 'expense' | 'finalBalance';
+
+type SummaryLabel = {
+  key: SummaryLabelKey;
+  aliases: string[];
+};
+
+const summaryLabels: SummaryLabel[] = [
+  { key: 'initialBalance', aliases: ['Saldo inicial'] },
+  { key: 'netYield', aliases: ['Rendimento líquido', 'Rendimento liquido'] },
+  { key: 'income', aliases: ['Total de entradas'] },
+  { key: 'expense', aliases: ['Total de saídas', 'Total de saidas'] },
+  { key: 'finalBalance', aliases: ['Saldo final do período', 'Saldo final do periodo'] },
+];
+
 function isMoneyLine(line: string) {
   return /^[+-]?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}$|^[+-]?\s?\d+[,.]\d{2}$/.test(line.trim());
 }
@@ -13,23 +28,54 @@ function findInlineAmountAfterLabel(text: string, label: string) {
   return match?.[1] ? Math.abs(parseAmount(match[1])) : null;
 }
 
-function findAmountInNubankSummary(lines: string[], label: string) {
-  const normalizedLabel = normalizeText(label);
+function getSummaryBlock(lines: string[]) {
   const summaryStart = lines.findIndex((line) => normalizeText(line).includes('saldo inicial'));
-  const summaryEnd = lines.findIndex((line) => normalizeText(line).includes('movimentacoes') || normalizeText(line).includes('movimentações'));
+  const summaryEnd = lines.findIndex((line) => normalizeText(line).includes('movimentacoes'));
   const safeStart = summaryStart >= 0 ? summaryStart : 0;
-  const safeEnd = summaryEnd > safeStart ? summaryEnd : Math.min(lines.length, safeStart + 20);
-  const summaryLines = lines.slice(safeStart, safeEnd);
-  const labelIndex = summaryLines.findIndex((line) => normalizeText(line).includes(normalizedLabel));
-
-  if (labelIndex < 0) return null;
-
-  const followingMoney = summaryLines.slice(labelIndex + 1).find((line) => isMoneyLine(line));
-  return followingMoney ? Math.abs(parseAmount(followingMoney)) : null;
+  const safeEnd = summaryEnd > safeStart ? summaryEnd : Math.min(lines.length, safeStart + 30);
+  return lines.slice(safeStart, safeEnd);
 }
 
-function findAmountAfterLabel(rawText: string, lines: string[], label: string) {
-  return findInlineAmountAfterLabel(rawText, label) ?? findAmountInNubankSummary(lines, label);
+function getLabelKey(line: string): SummaryLabelKey | null {
+  const normalized = normalizeText(line);
+  const label = summaryLabels.find((item) => item.aliases.some((alias) => normalized.includes(normalizeText(alias))));
+  return label?.key ?? null;
+}
+
+function mapNubankSummaryValues(lines: string[]) {
+  const summaryLines = getSummaryBlock(lines);
+  const labels = summaryLines
+    .map((line, index) => ({ key: getLabelKey(line), index }))
+    .filter((item): item is { key: SummaryLabelKey; index: number } => Boolean(item.key));
+  const values = summaryLines
+    .map((line, index) => ({ value: isMoneyLine(line) ? Math.abs(parseAmount(line)) : null, index }))
+    .filter((item): item is { value: number; index: number } => item.value !== null);
+
+  const mapped = new Map<SummaryLabelKey, number>();
+
+  labels.forEach((label, labelPosition) => {
+    const nextLabel = labels[labelPosition + 1];
+    const inlineValue = values.find((value) => value.index > label.index && (!nextLabel || value.index < nextLabel.index));
+
+    if (inlineValue) {
+      mapped.set(label.key, inlineValue.value);
+      return;
+    }
+
+    const blockValue = values[labelPosition];
+    if (blockValue) mapped.set(label.key, blockValue.value);
+  });
+
+  return mapped;
+}
+
+function findAmountAfterLabel(rawText: string, lines: string[], labels: string[], key: SummaryLabelKey) {
+  for (const label of labels) {
+    const inlineAmount = findInlineAmountAfterLabel(rawText, label);
+    if (inlineAmount !== null) return inlineAmount;
+  }
+
+  return mapNubankSummaryValues(lines).get(key) ?? null;
 }
 
 function detectBankName(text: string) {
@@ -65,9 +111,9 @@ export function auditImport(rawText: string, transactions: Transaction[]): Impor
     .map((line) => line.trim())
     .filter(Boolean);
   const summary = getSummary(transactions);
-  const declaredIncome = findAmountAfterLabel(rawText, lines, 'Total de entradas');
-  const declaredExpense = findAmountAfterLabel(rawText, lines, 'Total de saídas') ?? findAmountAfterLabel(rawText, lines, 'Total de saidas');
-  const declaredFinalBalance = findAmountAfterLabel(rawText, lines, 'Saldo final do período') ?? findAmountAfterLabel(rawText, lines, 'Saldo final do periodo');
+  const declaredIncome = findAmountAfterLabel(rawText, lines, ['Total de entradas'], 'income');
+  const declaredExpense = findAmountAfterLabel(rawText, lines, ['Total de saídas', 'Total de saidas'], 'expense');
+  const declaredFinalBalance = findAmountAfterLabel(rawText, lines, ['Saldo final do período', 'Saldo final do periodo'], 'finalBalance');
   const incomeDifference = moneyDifference(declaredIncome, summary.income);
   const expenseDifference = moneyDifference(declaredExpense, summary.expense);
   const hasDeclaredTotals = declaredIncome !== null || declaredExpense !== null;
