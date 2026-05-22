@@ -11,6 +11,7 @@ import './incomeCompare.css';
 import './savedAnalyses.css';
 import './importCleanup.css';
 import './authBootstrap';
+import './authFlowBootstrap';
 import './incomeCompareBootstrap';
 import './savedAnalysesBootstrap';
 
