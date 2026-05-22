@@ -50,6 +50,7 @@ type SortOption = 'date-desc' | 'amount-desc' | 'amount-asc' | 'expenses-desc' |
 type TypeFilter = 'all' | TransactionType;
 type QuickFilter = 'biggest-expenses' | 'income' | 'pix' | 'food' | 'transport' | 'health';
 type SaveMessage = { tone: 'success' | 'warning' | 'neutral'; text: string } | null;
+type LoadStatementEvent = CustomEvent<{ rawText: string }>;
 
 export default function App() {
   const [hasStarted, setHasStarted] = useState(false);
@@ -97,6 +98,22 @@ export default function App() {
     });
 
     return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    function handleLoadSavedStatement(event: Event) {
+      const customEvent = event as LoadStatementEvent;
+      const nextText = customEvent.detail?.rawText ?? '';
+      if (!nextText) return;
+
+      setRawText(nextText);
+      clearFilters();
+      setHasStarted(true);
+      setSaveMessage({ tone: 'success', text: 'Análise salva carregada com sucesso.' });
+    }
+
+    window.addEventListener('kyf:load-statement', handleLoadSavedStatement);
+    return () => window.removeEventListener('kyf:load-statement', handleLoadSavedStatement);
   }, []);
 
   async function handleFile(file?: File) {
