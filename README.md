@@ -159,3 +159,9 @@ Também existem ajustes iniciais para extratos reais de bancos brasileiros, mas 
 O Know Your Finance está em desenvolvimento ativo.
 
 A versão atual já permite testar a ideia principal: importar um extrato, organizar os lançamentos e visualizar uma análise financeira inicial. Ainda assim, a aplicação deve ser tratada como uma versão beta, sujeita a erros de leitura, categorização e interpretação dos dados.
+
+---
+
+## Deploy
+
+Após a limpeza dos projetos duplicados na Vercel, o deploy oficial deve acontecer somente pelo projeto principal `know-your-finance`, conectado à branch `main`.
