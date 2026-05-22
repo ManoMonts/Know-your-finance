@@ -37,7 +37,7 @@ function renderAuthModal(message = '') {
 
       ${!isSupabaseConfigured ? `
         <div class="auth-warning">
-          Supabase ainda não configurado. Adicione <strong>VITE_SUPABASE_URL</strong> e <strong>VITE_SUPABASE_PUBLISHABLE_KEY</strong> na Vercel para ativar login real.
+          Login indisponível no momento. Confira a configuração do Supabase na Vercel.
         </div>
       ` : ''}
 
@@ -54,7 +54,7 @@ function renderAuthModal(message = '') {
       </form>
 
       ${message ? `<div class="auth-message">${message}</div>` : ''}
-      <small class="auth-note">Por enquanto, a análise do extrato continua acontecendo no navegador. O login será usado para salvar histórico, categorias e relatórios.</small>
+      <small class="auth-note">A conta será usada para salvar histórico, categorias e relatórios.</small>
     </section>
   `;
 }
@@ -76,13 +76,22 @@ function closeAuthModal() {
   modalElement = null;
 }
 
+function goToAnalyzer() {
+  const startButton = document.querySelector<HTMLButtonElement>('.landing-primary');
+  if (startButton) startButton.click();
+
+  window.setTimeout(() => {
+    document.getElementById('analise')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 150);
+}
+
 async function handleAuthSubmit(form: HTMLFormElement) {
   const formData = new FormData(form);
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
 
   if (!isSupabaseConfigured || !supabase) {
-    renderAuthModal('Configure as variáveis do Supabase na Vercel para ativar autenticação real.');
+    renderAuthModal('Login indisponível no momento. Confira a configuração do Supabase na Vercel.');
     return;
   }
 
@@ -101,11 +110,13 @@ async function handleAuthSubmit(form: HTMLFormElement) {
     return;
   }
 
-  renderAuthModal(
-    currentMode === 'signin'
-      ? 'Login realizado com sucesso.'
-      : 'Conta criada. Verifique seu e-mail se a confirmação estiver ativa no Supabase.',
-  );
+  if (currentMode === 'signin') {
+    closeAuthModal();
+    goToAnalyzer();
+    return;
+  }
+
+  renderAuthModal('Conta criada. Verifique seu e-mail se a confirmação estiver ativa no Supabase.');
 }
 
 function bindAuthEvents() {
