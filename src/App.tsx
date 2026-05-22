@@ -1,4 +1,5 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import {
   AlertTriangle,
   ArrowDownCircle,
@@ -12,12 +13,15 @@ import {
   Lightbulb,
   Loader2,
   LockKeyhole,
+  LogOut,
+  Save,
   Search,
   ShieldCheck,
   Sparkles,
   Store,
   TrendingUp,
   Upload,
+  UserCircle,
   Wallet,
 } from 'lucide-react';
 import {
@@ -36,13 +40,16 @@ import { getExpensesByCategory, getFinancialInsights, getMonthlyFlow, getSummary
 import { sampleText } from './lib/financeRules';
 import { auditImport } from './lib/importAudit';
 import { extractTextFromPdf } from './lib/pdfExtractor';
+import { saveAnalysis } from './lib/saveAnalysis';
 import { normalizeText, parseStatement } from './lib/statementParser';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import type { FinancialInsight, ImportAudit, Transaction, TransactionType } from './types/finance';
 
 const chartColors = ['#60a5fa', '#22c55e', '#f59e0b', '#ef4444', '#a78bfa', '#14b8a6', '#f97316', '#ec4899', '#84cc16'];
 type SortOption = 'date-desc' | 'amount-desc' | 'amount-asc' | 'expenses-desc' | 'income-desc';
 type TypeFilter = 'all' | TransactionType;
 type QuickFilter = 'biggest-expenses' | 'income' | 'pix' | 'food' | 'transport' | 'health';
+type SaveMessage = { tone: 'success' | 'warning' | 'neutral'; text: string } | null;
 
 export default function App() {
   const [hasStarted, setHasStarted] = useState(false);
@@ -52,6 +59,9 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortOption, setSortOption] = useState<SortOption>('date-desc');
   const [isImporting, setIsImporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<SaveMessage>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const transactions = useMemo(() => parseStatement(rawText), [rawText]);
   const summary = useMemo(() => getSummary(transactions), [transactions]);
@@ -75,10 +85,25 @@ export default function App() {
       .sort((a, b) => sortTransactions(a, b, sortOption));
   }, [categoryFilter, query, sortOption, transactions, typeFilter]);
 
+  useEffect(() => {
+    if (!supabase) return;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      setCurrentUser(data.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   async function handleFile(file?: File) {
     if (!file) return;
 
     setIsImporting(true);
+    setSaveMessage(null);
 
     try {
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -90,6 +115,43 @@ export default function App() {
       window.alert('Não foi possível ler o arquivo. Tente enviar um PDF, CSV ou TXT exportado pelo banco.');
     } finally {
       setIsImporting(false);
+    }
+  }
+
+  async function handleSignOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setSaveMessage({ tone: 'neutral', text: 'Você saiu da conta.' });
+  }
+
+  async function handleSaveAnalysis() {
+    if (transactions.length === 0) {
+      setSaveMessage({ tone: 'warning', text: 'Importe um extrato antes de salvar a análise.' });
+      return;
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      setSaveMessage({ tone: 'warning', text: 'Supabase ainda não configurado no ambiente.' });
+      return;
+    }
+
+    if (!currentUser) {
+      setSaveMessage({ tone: 'warning', text: 'Entre na sua conta para salvar esta análise.' });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      await saveAnalysis(summary, transactions);
+      setSaveMessage({ tone: 'success', text: 'Análise salva com sucesso no seu histórico.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível salvar a análise.';
+      setSaveMessage({ tone: 'warning', text: message });
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -143,9 +205,7 @@ export default function App() {
             <span><Wallet size={20} /></span>
             <strong>Know Your Finance</strong>
           </div>
-          <button type="button" className="login-preview-button">
-            <LockKeyhole size={16} /> Entrar / criar conta em breve
-          </button>
+          <AuthArea user={currentUser} onSignOut={handleSignOut} variant="landing" />
         </nav>
 
         <section className="landing-hero">
@@ -211,6 +271,14 @@ export default function App() {
 
   return (
     <main className="app-shell">
+      <nav className="app-topbar">
+        <div className="app-brand-mini">
+          <span><Wallet size={18} /></span>
+          <strong>Know Your Finance</strong>
+        </div>
+        <AuthArea user={currentUser} onSignOut={handleSignOut} />
+      </nav>
+
       <section className="hero-card">
         <div>
           <span className="eyebrow"><Sparkles size={16} /> Know Your Finance</span>
@@ -223,13 +291,17 @@ export default function App() {
               {isImporting ? <Loader2 size={18} className="spin" /> : <Upload size={18} />} {isImporting ? 'Lendo extrato...' : 'Importar extrato'}
               <input type="file" accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
             </label>
+            <button type="button" className="save-analysis-button" onClick={handleSaveAnalysis} disabled={isSaving}>
+              {isSaving ? <Loader2 size={18} className="spin" /> : <Save size={18} />} {isSaving ? 'Salvando...' : 'Salvar análise'}
+            </button>
             <a className="secondary-button" href="#analise">Ver análise</a>
           </div>
+          {saveMessage ? <div className={`inline-save-message ${saveMessage.tone}`}>{saveMessage.text}</div> : null}
         </div>
         <div className="trust-card">
           <ShieldCheck size={28} />
           <strong>Privacidade primeiro</strong>
-          <span>Nesta primeira versão, a análise acontece no navegador. Depois ligamos ao Supabase com login e RLS.</span>
+          <span>{currentUser ? 'Sua sessão está ativa. As análises salvas ficam protegidas por RLS no Supabase.' : 'Entre na conta para salvar histórico, categorias e relatórios no Supabase.'}</span>
         </div>
       </section>
 
@@ -446,6 +518,31 @@ export default function App() {
         </div>
       </section>
     </main>
+  );
+}
+
+function AuthArea({ user, onSignOut, variant = 'app' }: { user: User | null; onSignOut: () => void; variant?: 'app' | 'landing' }) {
+  if (!user) {
+    return (
+      <button type="button" className="login-preview-button">
+        <LockKeyhole size={16} /> Entrar / criar conta
+      </button>
+    );
+  }
+
+  return (
+    <div className={`user-session-card ${variant}`}>
+      <div className="user-session-main">
+        <UserCircle size={18} />
+        <div>
+          <span>Logado como</span>
+          <strong>{user.email}</strong>
+        </div>
+      </div>
+      <button type="button" onClick={onSignOut}>
+        <LogOut size={15} /> Sair
+      </button>
+    </div>
   );
 }
 
