@@ -153,17 +153,14 @@ function getGoalProjection(goal: Goal, state: PlanningState, realAverage: number
 }
 
 function ensurePanel() {
-  const anchor = document.querySelector<HTMLElement>('.monthly-history-panel')
-    ?? document.querySelector<HTMLElement>('.saved-analyses-panel')
-    ?? document.querySelector<HTMLElement>('.hero-card');
+  const route = document.querySelector<HTMLElement>('.planning-route');
+  if (!route) return null;
 
-  if (!anchor) return null;
-
-  let panel = document.querySelector<HTMLElement>('.planning-panel');
+  let panel = route.querySelector<HTMLElement>('.planning-panel');
   if (!panel) {
     panel = document.createElement('section');
     panel.className = 'panel wide-panel planning-panel';
-    anchor.insertAdjacentElement('afterend', panel);
+    route.appendChild(panel);
   }
 
   return panel;
@@ -272,7 +269,7 @@ function renderGoal(goal: Goal, state: PlanningState, realAverage: number) {
         </label>
         <label>
           <span>Valor mensal manual</span>
-          <input data-goal-field="monthlyAmount" inputmode="decimal" value="${goal.monthlyAmount}" ${goal.source !== 'manual-monthly' ? '' : ''} />
+          <input data-goal-field="monthlyAmount" inputmode="decimal" value="${goal.monthlyAmount}" />
         </label>
       </div>
       <div class="planning-result-row">
@@ -432,7 +429,7 @@ function scheduleRender() {
 }
 
 const observer = new MutationObserver(() => {
-  if (!document.querySelector('.planning-panel')) scheduleRender();
+  if (document.querySelector('.planning-route')) scheduleRender();
 });
 observer.observe(document.body, { childList: true, subtree: true });
 
@@ -512,6 +509,11 @@ document.addEventListener('click', (event) => {
 window.addEventListener('kyf:load-statement', () => {
   lastSignature = '';
   window.setTimeout(scheduleRender, 250);
+});
+
+window.addEventListener('kyf:active-tab-change', () => {
+  lastSignature = '';
+  scheduleRender();
 });
 
 scheduleRender();
