@@ -20,6 +20,8 @@ type SavedTransaction = {
 };
 
 let isLoading = false;
+let loadScheduled = false;
+let hasInitialPanel = false;
 
 function formatDate(date: string | null) {
   if (!date) return 'Sem data';
@@ -89,6 +91,7 @@ function ensurePanel() {
     hero.insertAdjacentElement('afterend', panel);
   }
 
+  hasInitialPanel = true;
   return panel;
 }
 
@@ -185,6 +188,7 @@ async function openSavedAnalysis(statementId: string) {
 
     textarea.value = transactions.map(transactionToLine).join('\n');
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
     await loadSavedAnalyses();
 
     document.getElementById('analise')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -232,12 +236,18 @@ function bindEvents() {
 }
 
 function schedulePanelLoad() {
+  if (loadScheduled) return;
+  loadScheduled = true;
+
   window.requestAnimationFrame(() => {
+    loadScheduled = false;
     if (ensurePanel()) void loadSavedAnalyses();
   });
 }
 
-const observer = new MutationObserver(() => schedulePanelLoad());
+const observer = new MutationObserver(() => {
+  if (!hasInitialPanel || !document.querySelector('.saved-analyses-panel')) schedulePanelLoad();
+});
 observer.observe(document.body, { childList: true, subtree: true });
 
 if (supabase) {
