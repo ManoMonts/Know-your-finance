@@ -1,0 +1,80 @@
+.app-tabs-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto 18px;
+}
+
+.app-tabs-card {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.72);
+  border-radius: 999px;
+  box-shadow: 0 18px 60px rgba(2, 6, 23, 0.25);
+}
+
+.app-tab-button {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.app-tab-button:hover {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.09);
+}
+
+.app-tab-button.active {
+  color: #eff6ff;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(14, 165, 233, 0.78));
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
+}
+
+.tab-hidden {
+  display: none !important;
+}
+
+.planning-route {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.planning-route-hero {
+  margin-bottom: 18px;
+}
+
+.planning-route-hero h1 {
+  margin: 8px 0;
+  color: #f8fafc;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.planning-route .planning-panel {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .app-tabs-shell {
+    width: calc(100% - 24px);
+  }
+
+  .app-tabs-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .app-tab-button {
+    padding: 10px 12px;
+  }
+
+  .planning-route {
+    width: calc(100% - 24px);
+  }
+}
