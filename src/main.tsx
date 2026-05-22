@@ -10,11 +10,15 @@ import './session.css';
 import './incomeCompare.css';
 import './savedAnalyses.css';
 import './importCleanup.css';
+import './appTabs.css';
+import './planning.css';
 import './authBootstrap';
 import './authFlowBootstrap';
 import './incomeCompareBootstrap';
 import './savedAnalysesBootstrap';
 import './monthlyHistoryBootstrap';
+import './appTabsBootstrap';
+import './planningBootstrap';
 
 const rootElement = document.getElementById('root');
 
