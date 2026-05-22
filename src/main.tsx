@@ -5,6 +5,8 @@ import './styles.css';
 import './audit.css';
 import './filters.css';
 import './landing.css';
+import './auth.css';
+import './authBootstrap';
 
 const rootElement = document.getElementById('root');
 
