@@ -14,6 +14,7 @@ import './authBootstrap';
 import './authFlowBootstrap';
 import './incomeCompareBootstrap';
 import './savedAnalysesBootstrap';
+import './monthlyHistoryBootstrap';
 
 const rootElement = document.getElementById('root');
 
