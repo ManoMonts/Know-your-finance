@@ -50,10 +50,6 @@ function transactionToLine(transaction: SavedTransaction) {
   return `${formatDate(transaction.transaction_date)};${transaction.description};${amountText}`;
 }
 
-function getTextarea() {
-  return document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Cole o extrato bancário aqui"]');
-}
-
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -179,16 +175,9 @@ async function openSavedAnalysis(statementId: string) {
     if (error) throw error;
 
     const transactions = (data ?? []) as SavedTransaction[];
-    const textarea = getTextarea();
+    const rawText = transactions.map(transactionToLine).join('\n');
 
-    if (!textarea) {
-      await loadSavedAnalyses();
-      return;
-    }
-
-    textarea.value = transactions.map(transactionToLine).join('\n');
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    window.dispatchEvent(new CustomEvent('kyf:load-statement', { detail: { rawText } }));
     await loadSavedAnalyses();
 
     document.getElementById('analise')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
