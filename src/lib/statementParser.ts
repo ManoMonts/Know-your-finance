@@ -280,18 +280,19 @@ function parseDelimitedLine(line: string, index: number): Transaction | null {
 function parseLooseLine(line: string, index: number): Transaction | null {
   if (shouldIgnoreLine(line) || /^Total de /i.test(line)) return null;
 
-  const amountMatch = line.match(/\(?-?\s?R?\$?\s?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\)?|\(?-?\s?\d+[.,]\d{2}\)?/i);
-  if (!amountMatch) return null;
+  const dateMatch = line.match(/\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2}|\d{2}\d{2}\d{4}|\d{2}\s+[A-ZÇ]{3}\s+\d{4}/i);
+  const rawDate = dateMatch?.[0] ?? 'Sem data';
+  const lineWithoutDate = rawDate === 'Sem data' ? line : line.replace(rawDate, ' ');
+  const amountMatches = [...lineWithoutDate.matchAll(/\(?[+-]?\s?R?\$?\s?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\)?|\(?[+-]?\s?\d+[.,]\d{2}\)?/gi)];
+  const amountRaw = amountMatches.at(-1)?.[0];
 
-  const amountRaw = amountMatch[0];
+  if (!amountRaw) return null;
+
   const amount = parseAmount(amountRaw);
   if (amount === 0) return null;
 
-  const dateMatch = line.match(/\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2}|\d{2}\d{2}\d{4}|\d{2}\s+[A-ZÇ]{3}\s+\d{4}/i);
-  const rawDate = dateMatch?.[0] ?? 'Sem data';
-  const description = line
+  const description = lineWithoutDate
     .replace(amountRaw, '')
-    .replace(rawDate, '')
     .replace(/[;|,\t]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim() || 'Lançamento sem descrição';
