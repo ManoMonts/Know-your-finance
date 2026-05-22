@@ -8,8 +8,10 @@ import './landing.css';
 import './auth.css';
 import './session.css';
 import './incomeCompare.css';
+import './savedAnalyses.css';
 import './authBootstrap';
 import './incomeCompareBootstrap';
+import './savedAnalysesBootstrap';
 
 const rootElement = document.getElementById('root');
 
