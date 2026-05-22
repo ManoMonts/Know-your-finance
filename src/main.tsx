@@ -7,7 +7,9 @@ import './filters.css';
 import './landing.css';
 import './auth.css';
 import './session.css';
+import './incomeCompare.css';
 import './authBootstrap';
+import './incomeCompareBootstrap';
 
 const rootElement = document.getElementById('root');
 
