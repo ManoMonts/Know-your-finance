@@ -29,6 +29,7 @@ Na versão atual, o Know Your Finance já trabalha com:
 - Login com Supabase Auth.
 - Salvamento de análises no Supabase.
 - Histórico de análises salvas para reabrir depois.
+- Aba de planejamento para metas, ganhos e gastos futuros.
 
 ---
 
@@ -165,3 +166,5 @@ A versão atual já permite testar a ideia principal: importar um extrato, organ
 ## Deploy
 
 Após a limpeza dos projetos duplicados na Vercel, o deploy oficial deve acontecer somente pelo projeto principal `know-your-finance`, conectado à branch `main`.
+
+Último ajuste: ativação da navegação entre Análise e Planejamento.
