@@ -284,7 +284,7 @@ function parseLooseLine(line: string, index: number): Transaction | null {
   const rawDate = dateMatch?.[0] ?? 'Sem data';
   const lineWithoutDate = rawDate === 'Sem data' ? line : line.replace(rawDate, ' ');
   const amountMatches = [...lineWithoutDate.matchAll(/\(?[+-]?\s?R?\$?\s?\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\)?|\(?[+-]?\s?\d+[.,]\d{2}\)?/gi)];
-  const amountRaw = amountMatches.at(-1)?.[0];
+  const amountRaw = amountMatches.length > 0 ? amountMatches[amountMatches.length - 1][0] : undefined;
 
   if (!amountRaw) return null;
 
