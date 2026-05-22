@@ -97,6 +97,20 @@ function setPanelContent(html: string) {
   if (content) content.innerHTML = html;
 }
 
+function closeAuthModal() {
+  document.body.classList.remove('auth-open');
+  document.querySelector('.auth-root')?.remove();
+}
+
+function openAnalyzerAfterAuth() {
+  const startButton = document.querySelector<HTMLButtonElement>('.landing-primary');
+  if (startButton) startButton.click();
+
+  window.setTimeout(() => {
+    document.getElementById('analise')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
+}
+
 async function loadSavedAnalyses() {
   if (isLoading) return;
   const panel = ensurePanel();
@@ -240,7 +254,14 @@ const observer = new MutationObserver(() => {
 observer.observe(document.body, { childList: true, subtree: true });
 
 if (supabase) {
-  supabase.auth.onAuthStateChange(() => schedulePanelLoad());
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      closeAuthModal();
+      openAnalyzerAfterAuth();
+    }
+
+    schedulePanelLoad();
+  });
 }
 
 bindEvents();
