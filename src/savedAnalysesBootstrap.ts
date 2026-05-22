@@ -68,7 +68,10 @@ function createPanel() {
         <span class="section-label">Histórico salvo</span>
         <h2>Análises salvas</h2>
       </div>
-      <button type="button" class="saved-refresh-button">Atualizar</button>
+      <div class="saved-header-actions">
+        <button type="button" class="saved-open-all-button">Carregar tudo</button>
+        <button type="button" class="saved-refresh-button">Atualizar</button>
+      </div>
     </div>
     <div class="saved-analyses-content">
       <div class="empty-state compact-empty">Entre na conta para ver suas análises salvas.</div>
@@ -132,7 +135,7 @@ async function loadSavedAnalyses() {
       .from('bank_statements')
       .select('id,title,imported_at,total_income,total_expense,balance')
       .order('imported_at', { ascending: false })
-      .limit(8);
+      .limit(12);
 
     if (error) throw error;
 
@@ -174,21 +177,26 @@ async function loadSavedAnalyses() {
   }
 }
 
+async function fetchTransactionsByStatementIds(statementIds: string[]) {
+  if (!supabase || statementIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('transaction_date,description,amount,type,category_name,raw_line')
+    .in('statement_id', statementIds)
+    .order('transaction_date', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as SavedTransaction[];
+}
+
 async function openSavedAnalysis(statementId: string) {
   if (!supabase) return;
 
   setPanelContent('<div class="empty-state compact-empty">Abrindo análise salva...</div>');
 
   try {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('transaction_date,description,amount,type,category_name,raw_line')
-      .eq('statement_id', statementId)
-      .order('transaction_date', { ascending: true });
-
-    if (error) throw error;
-
-    const transactions = (data ?? []) as SavedTransaction[];
+    const transactions = await fetchTransactionsByStatementIds([statementId]);
     const rawText = transactions.map(transactionToLine).join('\n');
 
     window.dispatchEvent(new CustomEvent('kyf:load-statement', { detail: { rawText } }));
@@ -197,6 +205,39 @@ async function openSavedAnalysis(statementId: string) {
     document.getElementById('analise')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Não foi possível abrir a análise salva.';
+    setPanelContent(`<div class="empty-state compact-empty">${escapeHtml(message)}</div>`);
+  }
+}
+
+async function openAllSavedAnalyses() {
+  if (!supabase) return;
+
+  setPanelContent('<div class="empty-state compact-empty">Carregando todo o histórico salvo...</div>');
+
+  try {
+    const { data: statementsData, error: statementsError } = await supabase
+      .from('bank_statements')
+      .select('id')
+      .order('imported_at', { ascending: false })
+      .limit(12);
+
+    if (statementsError) throw statementsError;
+
+    const statementIds = (statementsData ?? []).map((statement) => String(statement.id));
+    if (statementIds.length === 0) {
+      setPanelContent('<div class="empty-state compact-empty">Nenhuma análise salva encontrada.</div>');
+      return;
+    }
+
+    const transactions = await fetchTransactionsByStatementIds(statementIds);
+    const rawText = transactions.map(transactionToLine).join('\n');
+
+    window.dispatchEvent(new CustomEvent('kyf:load-statement', { detail: { rawText } }));
+    await loadSavedAnalyses();
+
+    document.getElementById('analise')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Não foi possível carregar todo o histórico.';
     setPanelContent(`<div class="empty-state compact-empty">${escapeHtml(message)}</div>`);
   }
 }
@@ -222,6 +263,11 @@ function bindEvents() {
 
     if (target.closest('.saved-refresh-button')) {
       void loadSavedAnalyses();
+      return;
+    }
+
+    if (target.closest('.saved-open-all-button')) {
+      void openAllSavedAnalyses();
       return;
     }
 
