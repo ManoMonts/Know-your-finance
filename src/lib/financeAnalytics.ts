@@ -26,10 +26,18 @@ export function getExpensesByCategory(transactions: Transaction[]): CategoryTota
 }
 
 export function getTopMerchants(transactions: Transaction[], limit = 8): MerchantTotal[] {
+  return getTopByType(transactions, 'expense', limit);
+}
+
+export function getTopIncomeSources(transactions: Transaction[], limit = 8): MerchantTotal[] {
+  return getTopByType(transactions, 'income', limit);
+}
+
+function getTopByType(transactions: Transaction[], type: 'income' | 'expense', limit: number): MerchantTotal[] {
   const totals = new Map<string, MerchantTotal>();
 
   transactions
-    .filter((transaction) => transaction.type === 'expense')
+    .filter((transaction) => transaction.type === type)
     .forEach((transaction) => {
       const merchant = cleanMerchantName(transaction.description);
       const current = totals.get(merchant) ?? {
@@ -54,6 +62,11 @@ function cleanMerchantName(description: string) {
     .replace(/^Compra no débito via NuPay\s+/i, '')
     .replace(/^Compra no débito\s+/i, '')
     .replace(/^Transferência enviada pelo Pix\s+/i, '')
+    .replace(/^Transferência recebida pelo Pix\s+/i, '')
+    .replace(/^Transferência Recebida\s+/i, '')
+    .replace(/^Reembolso recebido pelo Pix\s+/i, '')
+    .replace(/^Pix recebido\s+/i, '')
+    .replace(/^Pix enviado\s+/i, '')
     .replace(/^Pagamento de\s+/i, '')
     .replace(/\s+-\s+.*$/g, '')
     .replace(/\s{2,}/g, ' ')
