@@ -1,6 +1,9 @@
 import { formatCurrency, getTopIncomeSources } from './lib/financeAnalytics';
 import { parseStatement } from './lib/statementParser';
 
+let renderScheduled = false;
+let lastRenderedSignature = '';
+
 function getRawStatementText() {
   return document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Cole o extrato bancário aqui"]')?.value ?? '';
 }
@@ -20,12 +23,16 @@ function createIncomePanel() {
   return panel;
 }
 
-function renderIncomePanel(panel: HTMLElement) {
+function renderIncomePanel(panel: HTMLElement, rawText: string) {
   const list = panel.querySelector<HTMLElement>('.income-compare-list');
   if (!list) return;
 
-  const transactions = parseStatement(getRawStatementText());
+  const transactions = parseStatement(rawText);
   const topIncomeSources = getTopIncomeSources(transactions, 8);
+  const signature = JSON.stringify(topIncomeSources.map((source) => [source.name, source.category, source.value, source.count]));
+
+  if (signature === lastRenderedSignature) return;
+  lastRenderedSignature = signature;
 
   if (topIncomeSources.length === 0) {
     list.innerHTML = '<div class="empty-state compact-empty">Importe um extrato para ver suas maiores entradas.</div>';
@@ -74,14 +81,22 @@ function ensureIncomeComparePanel() {
     wrapper.appendChild(incomePanel);
   }
 
-  renderIncomePanel(incomePanel);
+  renderIncomePanel(incomePanel, getRawStatementText());
 }
 
 function scheduleRender() {
-  window.requestAnimationFrame(() => ensureIncomeComparePanel());
+  if (renderScheduled) return;
+  renderScheduled = true;
+
+  window.requestAnimationFrame(() => {
+    renderScheduled = false;
+    ensureIncomeComparePanel();
+  });
 }
 
-const observer = new MutationObserver(() => scheduleRender());
+const observer = new MutationObserver(() => {
+  if (!document.querySelector('.income-compare-panel')) scheduleRender();
+});
 observer.observe(document.body, { childList: true, subtree: true });
 
 document.addEventListener('input', (event) => {
